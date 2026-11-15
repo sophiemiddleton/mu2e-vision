@@ -1,0 +1,53 @@
+# Shifter instructions for the CRV DQM histograms, one entry per plot, in the format of
+# the CMS DQM-vision benchmark (version 2). Written for the synthetic test set
+# (histcompare/synthetic.py); replace with the real CRV shifter instructions when they exist.
+version: '0.1'
+subsystem: CRV
+plots:
+  crvPEs_CRVsector0: &pes
+    title: CRV PEs per reconstructed pulse
+    folder: CrvDQM
+    instruction: |
+      Description: The number of photoelectrons (PEs) of each reconstructed CRV pulse in
+      the sector, summed over all channels. Pulses below the 5 PE reconstruction threshold
+      are not recorded, so the first bins are empty.
+      Quality criteria for cosmics: a single Landau-shaped peak with its most probable
+      value (MPV) near 40 PE and a long tail to high PE. The MPV must agree with the
+      reference within about 5%. A shift of the peak to lower PE means a loss of SiPM gain
+      or light yield and must be reported. An excess of pulses just above threshold
+      (5-15 PE) that is not in the reference means electronic noise and must be reported.
+      Quality criteria for LED runs: the LED pulser lights every channel with the same
+      amount of light, so the distribution is a narrow, roughly Gaussian peak near 60 PE.
+      The cosmics reference does not apply to LED runs; judge only against this description.
+      Known issues: Short runs have few entries; judge the shape only within the
+      statistical fluctuations. The number of entries depends on run length and is not
+      a quality criterion.
+      Action for the CRV shifter: if the quality criteria are not met, mark the run BAD,
+      make an elog entry with the plot, and contact the CRV expert on call.
+    known_issues: []
+    last_updated: '2026-11-05'
+    updated_by: histcompare (synthetic)
+  crvPEs_CRVsector1:
+    <<: *pes
+  crvDigisPerChannel_CRVsector0:
+    title: CRV digis per channel
+    folder: CrvDQM
+    instruction: |
+      Description: The number of digis in each channel of the sector. There are 256
+      channels, read out by 4 front-end boards (FEBs) of 64 channels each (channels 0-63,
+      64-127, 128-191, 192-255). Channels differ by up to about 15% in rate, and channels
+      in the middle of the sector see slightly more cosmics than those at the ends.
+      Quality criteria for cosmics: every channel should have entries, with the same
+      channel-to-channel pattern as the reference. A block of adjacent empty channels,
+      and in particular a whole FEB of 64 channels, means a readout failure and must be
+      reported. A single channel far above its neighbours (a hot channel) must be reported.
+      Quality criteria for LED runs: every unmasked channel should have about the same
+      number of entries. The cosmics reference does not apply to LED runs.
+      Known issues: Channels 37 and 190 are masked and are always empty. One or two other
+      isolated empty channels are tolerated: note them in the elog, but the run stays GOOD.
+      The number of entries depends on run length and is not a quality criterion.
+      Action for the CRV shifter: if the quality criteria are not met, mark the run BAD,
+      make an elog entry with the plot, and contact the CRV expert on call.
+    known_issues: [masked channels 37 and 190]
+    last_updated: '2026-11-05'
+    updated_by: histcompare (synthetic)
