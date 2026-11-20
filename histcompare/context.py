@@ -64,7 +64,8 @@ def render(h, title: str, xlabel: str, label: str) -> bytes:
 
 def render_overlay(h, ref, title: str, xlabel: str, label: str, ref_label: str) -> bytes:
     """The input with the reference scaled to the same number of entries, for people."""
-    scale = h.sum() / ref.sum() if ref.sum() else 1.0
+    n, nref = float(np.sum(h.values())), float(np.sum(ref.values()))
+    scale = n / nref if nref else 1.0
     spec = PlotSpec(title=title, xlabel=xlabel, ylabel="Entries", annotations=stats_lines(h))
     spec.add_hist(ref * scale, label=f"{ref_label} (scaled)", color="gray")
     spec.add_hist(h, label=label)
@@ -82,7 +83,7 @@ def user_content(name: str, run: str, run_type: str, ref_run: int, instruction: 
         return {"type": "image", "source": {"type": "base64", "media_type": "image/png",
                                             "data": base64.standard_b64encode(data).decode()}}
     return [
-        {"type": "text", "text": f"Reference plot: golden cosmics run {ref_run}."},
+        {"type": "text", "text": f"Reference plot: golden cosmics run {ref_run} (same detector configuration period)."},
         png(ref_image),
         {"type": "text", "text": f"Input plot: run {run}."},
         png(image),

@@ -27,7 +27,11 @@ FIELDS = ["run", "run_type", "histogram", "truth", "truth_note", "ks", "ks_statu
 
 
 def run_file(data_dir: Path, run) -> Path:
-    return data_dir / f"dqm.mu2e.synthetic_crv.run{run}.root"
+    """The one file of a run: dqm.mu2e.<dataset>.run<run>.root (synthetic or real/realdata.py)."""
+    found = sorted(data_dir.glob(f"dqm.mu2e.*.run{run}.root"))
+    if len(found) != 1:
+        raise SystemExit(f"expected one file for run {run} in {data_dir}, found {len(found)}")
+    return found[0]
 
 
 def score(rows, method: str) -> dict:
@@ -102,21 +106,26 @@ def main(argv=None) -> None:
         (out / sub).mkdir(parents=True, exist_ok=True)
     plots = context.load_instructions(args.instructions)
     references, run_types = context.load_runs(data)
+    meta = json.loads((data / "runs.json").read_text())
+    ref_for = {r: int(v) for r, v in meta.get("reference_for", {}).items()}
+    all_refs = set(references.values()) | set(meta.get("references", []))
     truth_path = data / "truth.json"
     truth = json.loads(truth_path.read_text()) if truth_path.exists() else {}
     pars = ComparePars(independent=True, tight=args.ks_tight, loose=args.ks_loose)
 
-    runs = args.runs or [r for r in run_types if int(r) not in references.values()]
+    runs = args.runs or [r for r in run_types if int(r) not in all_refs]
     rows = []
     for run in runs:
         run_type = run_types[run]
-        ref_run = references["cosmics"]  # one golden run; LED instructions say it doesn't apply
+        # one golden run, or one per configuration period when runs.json has reference_for;
+        # the LED instructions say a cosmics reference doesn't apply
+        ref_run = ref_for.get(run, references["cosmics"])
         with open_file(str(run_file(data, run))) as f, open_file(str(run_file(data, ref_run))) as fr:
             for name, instr in plots.items():
                 path = f"{instr.get('folder', '')}/{name}".lstrip("/")
                 h, ref = f.read(path), fr.read(path)
                 cmp = compare_histograms(ref, h, pars, path=path)
-                xlabel = context.xlabel_for(name)
+                xlabel = instr.get("xlabel") or context.xlabel_for(name)
 
                 img = out / "images" / f"{run}_{name}_input.png"
                 ref_img = out / "images" / f"{ref_run}_{name}_reference.png"

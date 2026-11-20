@@ -77,6 +77,42 @@ The instructions are in [instructions/crv.yaml](instructions/crv.yaml), in the t
 format. They were written for this synthetic set, and should be replaced by the real CRV
 shifter instructions.
 
+## Real data (first test, 2026-11-15)
+
+`histcompare/realdata.py` reads the cosmics_crv DQM datasets on `/pnfs`, which hold one
+file per subrun. It sums each run's subruns into one file, in the layout the benchmark
+reads. There is no truth for real runs.
+
+```bash
+python -m histcompare.realdata survey --out real/survey.csv      # all runs: events, live channels, FEBs
+python -m histcompare.realdata build --out real/006-001 --reference 124336 \
+    --runs 124189 124192 ... --instructions instructions/crv_real_draft.yaml
+python -m histcompare.benchmark --data real/006-001 \
+    --instructions instructions/crv_real_draft.yaml --out results/real-006-001-dry
+# then add --base-url https://litellm.fnal.gov/v1 --model azure/claude-opus-5-5
+```
+
+The current test uses `crvreco-006-001`. It has 20 runs from 124189–125850 plus the
+reference 124336, and 6 histograms: `PEr`, `crvDigisPerChannel`, `h1_peakAdc`, `logchi2`,
+`errorBits` and `activeFebCount`.
+
+- **[instructions/crv_real_draft.yaml](instructions/crv_real_draft.yaml) is a draft.** It
+  was written from the CRVDQM source and from what these runs look like, and the CRV
+  group hasn't reviewed it. Its tolerances are guesses.
+- **The reference choice matters.** The detector configuration changes across the dataset:
+  the live channels go 1720 → 1792 → 1536 → 1600 → 1920. Even within 124xxx–125xxx, the
+  muon PE shoulder moves from about 26 to about 34 PE at around run 125700. Run 125846, the
+  first candidate reference, turned out to have channels 1024–1535 and 2048–2303 dead.
+- **Candidate problems seen by eye:** in 124192, 124324 and 124547, 64-channel blocks are
+  missing and FEBBufferIssue and FEBOverflow are set on every ROC header. In 124529 only
+  channels 1024–1535 and 2048–2303 read out. 125158 is similar, and in 125014 those
+  ranges are low. 125850 has Group1, Group2 and uBMatch errors on about 35% of headers. In
+  125014 the 6- and 24-FEB headers are unbalanced, at 26% and 74%. From 125707 the PE
+  shoulder is higher.
+- **KS is no use at these statistics:** 86 of 120 comparisons are BAD, and every run fails
+  on all four shape histograms. With 10⁸–10⁹ entries, any systematic difference gives
+  p ≈ 0.
+
 ## Choices to know about
 
 - **KS thresholds.** `dqm.hist.compare` defaults to calling a comparison tight above
