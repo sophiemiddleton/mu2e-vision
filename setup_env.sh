@@ -1,9 +1,9 @@
-# Environment for Mu2e-VisionDQM on a Mu2e gpvm: the cvmfs "ana" env (uproot, hist, scipy,
+# Environment for mu2e-vision on a Mu2e gpvm: the cvmfs "ana" env (uproot, hist, scipy,
 # matplotlib, yaml) plus the Mu2e/DQM python package (github.com/Mu2e/DQM).
 #
 #   export DQM_DIR=/path/to/DQM            # optional; otherwise ../DQM or ../../DQM is used
-#   source Mu2e-VisionDQM/setup_env.sh
-#   cd Mu2e-VisionDQM && python -m histcompare.synthetic --out synthetic
+#   source mu2e-vision/setup_env.sh
+#   cd mu2e-vision && python -m histcompare.synthetic --out synthetic
 
 _HC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

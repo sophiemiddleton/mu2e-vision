@@ -21,6 +21,7 @@ from dqm.hist.compare import ComparePars, compare_histograms
 from dqm.hist.read import open_file
 
 from . import context
+from .vision import parse_verdict
 
 FIELDS = ["run", "run_type", "histogram", "truth", "truth_note", "ks", "ks_status",
           "standard", "ml"]
@@ -74,7 +75,8 @@ def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--data", default="synthetic", help="directory from histcompare.synthetic")
     ap.add_argument("--instructions", default=str(Path(__file__).parents[1] / "instructions/crv.yaml"))
-    ap.add_argument("--out", required=True, help="output directory")
+    ap.add_argument("--out", required=True, help="output directory (a rerun into the same "
+                    "directory reuses the saved model responses, so an interrupted run resumes)")
     ap.add_argument("--runs", nargs="*", help="only these runs (default: all but the references)")
     ap.add_argument("--model", help="run the vision review with this model, e.g. claude-opus-5-5")
     ap.add_argument("--base-url", help="send the review to this OpenAI-compatible server "
@@ -143,7 +145,12 @@ def main(argv=None) -> None:
                     + context.as_text(content, [f"../images/{ref_img.name}", f"../images/{img.name}"]))
 
                 ml = None
-                if reviewer:
+                saved = out / "responses" / f"{run}_{name}.md"
+                if reviewer and saved.exists() and parse_verdict(saved.read_text()):
+                    # resume: a response from an earlier, interrupted run of the same --out
+                    ml = parse_verdict(saved.read_text())
+                    print(f"  {run} {name}: ML {ml} (saved)")
+                elif reviewer:
                     text, ml = reviewer.review(content)
                     (out / "responses" / f"{run}_{name}.md").write_text(text + "\n")
                     print(f"  {run} {name}: ML {ml}")

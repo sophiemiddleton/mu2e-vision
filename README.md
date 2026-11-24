@@ -1,4 +1,11 @@
-# HistCompare
+# mu2e-vision
+
+Vision-LLM data quality monitoring for Mu2e: https://github.com/sophiemiddleton/mu2e-vision
+(formerly Mu2e-VisionDQM). The Python package is `histcompare`.
+
+```bash
+git clone https://github.com/sophiemiddleton/mu2e-vision.git
+```
 
 Compares Mu2e DQM histograms with a golden reference run in two ways and scores both:
 
@@ -13,8 +20,8 @@ This is a test setup on synthetic CRV-like histograms whose correct answers are 
 ## Running it
 
 ```bash
-source Mu2e-VisionDQM/setup_env.sh      # ana env + Mu2e/DQM python (set DQM_DIR, or ../DQM)
-cd Mu2e-VisionDQM
+source mu2e-vision/setup_env.sh      # ana env + Mu2e/DQM python (set DQM_DIR, or ../DQM)
+cd mu2e-vision
 
 python -m histcompare.synthetic --out synthetic                      # 10 runs, 3 histograms each
 python -m histcompare.benchmark --data synthetic --out results/dry-run
@@ -93,7 +100,8 @@ python -m histcompare.benchmark --data real/006-001 \
 ```
 
 The current test uses `crvreco-006-001`. It has 20 runs from 124189–125850 plus the
-reference 124336, and 6 histograms: `PEr`, `crvDigisPerChannel`, `h1_peakAdc`, `logchi2`,
+reference, now **125026** (set in `real/006-001/runs.json`; earlier passes used 124336,
+then 124228, kept in `runs_ref124228.json`), and 6 histograms: `PEr`, `crvDigisPerChannel`, `h1_peakAdc`, `logchi2`,
 `errorBits` and `activeFebCount`.
 
 - **[instructions/crv_real_draft.yaml](instructions/crv_real_draft.yaml) is a draft.** It
@@ -103,6 +111,9 @@ reference 124336, and 6 histograms: `PEr`, `crvDigisPerChannel`, `h1_peakAdc`, `
   the live channels go 1720 → 1792 → 1536 → 1600 → 1920. Even within 124xxx–125xxx, the
   muon PE shoulder moves from about 26 to about 34 PE at around run 125700. Run 125846, the
   first candidate reference, turned out to have channels 1024–1535 and 2048–2303 dead.
+  124336 has extra dead half-blocks (even channels 1664–1791, odd 1920–2047). 125026 has
+  the same half-block pattern as 124228 and is in the period after the PEr/logchi2 change
+  (from about 125026), so earlier runs are now judged against the later state.
 - **Candidate problems seen by eye:** in 124192, 124324 and 124547, 64-channel blocks are
   missing and FEBBufferIssue and FEBOverflow are set on every ROC header. In 124529 only
   channels 1024–1535 and 2048–2303 read out. 125158 is similar, and in 125014 those

@@ -3,7 +3,8 @@ Run-level comparison of TranAD variants with the vision LLM on the 005-001 add-o
 
 A run counts as TranAD-flagged if any of its subruns is flagged; "no CRV data" rows (set
 aside by --drop-empty) are counted separately. The vision verdict for a run is BAD if any of
-its histograms is BAD.
+its histograms is BAD. A run with no vision results (e.g. the reference run) is shown as
+"not scored" and left out of the counts; scored runs missing from --groups are still listed.
 
     python -m histcompare.compare_tranad --vision results/real-005-001-opus55/results.csv \
         --groups real/groups_005-001.json --out results/real-005-001-compare \
@@ -48,15 +49,18 @@ def main(argv=None):
     a = ap.parse_args(argv)
     groups = json.load(open(a.groups))
     vis = defaultdict(list)
+    scored = set()
     for r in csv.DictReader(open(a.vision)):
+        scored.add(r["run"])
         if r["ml"] == "BAD":
             vis[r["run"]].append(r["histogram"])
     variants = {lab: tranad_runs(Path(p)) for lab, p in (x.split("=", 1) for x in a.tranad)}
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     rows = []
-    for run in sorted(groups):
-        row = {"run": run, "group": groups[run], "vision": "BAD" if vis.get(run) else "GOOD",
+    for run in sorted(set(groups) | scored):
+        verdict = ("BAD" if vis.get(run) else "GOOD") if run in scored else "not scored"
+        row = {"run": run, "group": groups.get(run, "-"), "vision": verdict,
                "vision_bad_histograms": " ".join(vis.get(run, []))}
         for lab, t in variants.items():
             o = t.get(run)
@@ -82,18 +86,21 @@ def main(argv=None):
     lines += ["", "| | " + " | ".join(labs) + " |", "|" + "---|" * (1 + len(labs))]
     for what, test in [("runs flagged", lambda v: v.startswith("FLAG")),
                        ("flagged and vision BAD", None), ("flagged and vision GOOD", None),
-                       ("vision BAD, not flagged", None)]:
+                       ("not flagged, scored", None), ("vision BAD, not flagged", None)]:
         cells = []
         for l in labs:
-            fl = [r for r in rows if r[l].startswith("FLAG")]
+            sc = [r for r in rows if r["vision"] != "not scored"]
+            fl = [r for r in sc if r[l].startswith("FLAG")]
             if what == "runs flagged":
                 n = len(fl)
             elif what == "flagged and vision BAD":
                 n = sum(r["vision"] == "BAD" for r in fl)
             elif what == "flagged and vision GOOD":
                 n = sum(r["vision"] == "GOOD" for r in fl)
+            elif what == "not flagged, scored":
+                n = sum(not r[l].startswith("FLAG") for r in sc)
             else:
-                n = sum(r["vision"] == "BAD" and not r[l].startswith("FLAG") for r in rows)
+                n = sum(r["vision"] == "BAD" and not r[l].startswith("FLAG") for r in sc)
             cells.append(str(n))
         lines.append(f"| {what} | " + " | ".join(cells) + " |")
     (out / "comparison.md").write_text("\n".join(lines) + "\n")
