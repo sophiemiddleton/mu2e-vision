@@ -117,7 +117,7 @@ def check_logchi2(v, e, r):
     if abs(pk(v) - pk(r)) > 0.2:
         issues.append(f"peak {pk(v):.2f} vs {pk(r):.2f}")
     hi = v[c > 3.5].sum() / v.sum()
-    if hi > 0.01 and v.sum() * 0.01 >= 10:
+    if hi > 0.02 and v.sum() * 0.02 >= 10:                             # v0.2: "more than about 2%"
         issues.append(f"{100*hi:.2f}% above 3.5")
     return issues
 

@@ -12,8 +12,9 @@ Compares Mu2e DQM histograms with a golden reference run in two ways and scores 
 - **Standard:** `dqm.hist.compare` from Mu2e/DQM, the KS probability against the reference.
 - **ML:** a vision LLM given the input and reference plots as images, the plot's shifter
   instructions, and the run type. This follows version 2 of the CMS DQM-vision benchmark
-  (Kwok and Jarugula, HAAI hackathon, Aug 2026). See [PLAN.md](PLAN.md), and
-  [literature/](literature/README.md) for related ML-for-DQM work in HEP.
+  (Kwok and Jarugula, HAAI hackathon, Aug 2026). See [PLAN.md](PLAN.md). A survey of
+  related ML-for-DQM work in HEP is kept outside this repository, in `HistCompare/literature/`
+  of the CrossExperimentalAIDQM working area.
 
 This is a test setup on synthetic CRV-like histograms whose correct answers are known.
 
@@ -24,7 +25,8 @@ source mu2e-vision/setup_env.sh      # ana env + Mu2e/DQM python (set DQM_DIR, o
 cd mu2e-vision
 
 python -m histcompare.synthetic --out synthetic                      # 10 runs, 3 histograms each
-python -m histcompare.benchmark --data synthetic --out results/dry-run
+git show 4fd943f:instructions/crv.yaml > crv_synthetic.yaml           # its instructions (removed)
+python -m histcompare.benchmark --data synthetic --instructions crv_synthetic.yaml --out results/dry-run
 ```
 
 Without `--model`, the benchmark runs the standard comparison and writes each prompt the
@@ -42,7 +44,7 @@ Azure-hosted models; the `openai` package is already in the ana env):
 ```bash
 export LITELLM_API_KEY=sk-...
 python -m histcompare.benchmark --base-url https://litellm.fnal.gov/v1 --list-models --out x
-python -m histcompare.benchmark --data synthetic --out results/sonnet \
+python -m histcompare.benchmark --data synthetic --instructions crv_synthetic.yaml --out results/sonnet \
     --base-url https://litellm.fnal.gov/v1 --model azure/claude-sonnet-4-6
 ```
 
@@ -54,7 +56,8 @@ Or through the Anthropic API:
 ```bash
 python -m pip install --user anthropic   # not in the ana env
 export ANTHROPIC_API_KEY=...             # or an `ant auth login` profile
-python -m histcompare.benchmark --data synthetic --out results/opus --model claude-opus-5-5
+python -m histcompare.benchmark --data synthetic --instructions crv_synthetic.yaml \
+    --out results/opus --model claude-opus-5-5
 ```
 
 The output is `summary.md`, which shows the score of each method against the truth and one
@@ -80,9 +83,10 @@ cosmics reference.
 | 105008 | LED calibration run | All GOOD (the cosmics reference doesn't apply) |
 | 105009 | Low-PE noise in sector 1 | Sector 1 PEs BAD |
 
-The instructions are in [instructions/crv.yaml](instructions/crv.yaml), in the talk's
-format. They were written for this synthetic set, and should be replaced by the real CRV
-shifter instructions.
+The synthetic set's instructions (`instructions/crv.yaml`) were removed on 2026-11-24, so
+only the instructions for real data remain. To rerun the synthetic benchmark, restore them
+from git history (`git show 4fd943f:instructions/crv.yaml > crv_synthetic.yaml`) and pass
+`--instructions crv_synthetic.yaml`.
 
 ## Real data (first test, 2026-11-15)
 
@@ -105,11 +109,16 @@ then 124228, kept in `runs_ref124228.json`), and 6 histograms: `PEr`, `crvDigisP
 `errorBits` and `activeFebCount`.
 
 - **[instructions/crv_real_draft.yaml](instructions/crv_real_draft.yaml) is a draft.** It
-  was written from the CRVDQM source and from what these runs look like, and the CRV
-  group hasn't reviewed it. Its tolerances are guesses.
+  was written by hand from the CRVDQM source and the bin contents of these runs, and the
+  CRV group hasn't reviewed it. Its tolerances are guesses. Version 0.2 (2026-11-24)
+  describes reference 125026. Every pass before that used version 0.1, which described
+  124336 (`git show 4fd943f:instructions/crv_real_draft.yaml`). `histcompare.rulecheck`
+  codes the same criteria as numeric tests, so keep the two in step.
 - **The reference choice matters.** The detector configuration changes across the dataset:
   the live channels go 1720 → 1792 → 1536 → 1600 → 1920. Even within 124xxx–125xxx, the
-  muon PE shoulder moves from about 26 to about 34 PE at around run 125700. Run 125846, the
+  PEr shape changes twice. From about 125026, the highest bin moves from 8–12 to 4–8 PE and
+  the muon shoulder becomes a flat plateau at about 28–48 PE. From about 125707, the peak is
+  back at 8–12 PE, with a plateau at about 24–40 PE. Run 125846, the
   first candidate reference, turned out to have channels 1024–1535 and 2048–2303 dead.
   124336 has extra dead half-blocks (even channels 1664–1791, odd 1920–2047). 125026 has
   the same half-block pattern as 124228 and is in the period after the PEr/logchi2 change
@@ -147,5 +156,5 @@ then 124228, kept in `runs_ref124228.json`), and 6 histograms: `PEr`, `crvDigisP
 | `histcompare/context.py` | Instructions, run metadata, rendering through `dqm.plot`, and the prompt |
 | `histcompare/vision.py` | The model call and verdict parsing |
 | `histcompare/benchmark.py` | Runs both comparisons over all runs and scores them |
-| `instructions/crv.yaml` | Shifter instructions for the three histograms |
+| `instructions/crv_real_draft.yaml` | Draft shifter instructions for the six crvreco-006-001 histograms |
 | `setup_env.sh` | Environment for a Mu2e gpvm |

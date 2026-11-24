@@ -74,7 +74,9 @@ def write_summary(out: Path, rows, args) -> None:
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--data", default="synthetic", help="directory from histcompare.synthetic")
-    ap.add_argument("--instructions", default=str(Path(__file__).parents[1] / "instructions/crv.yaml"))
+    ap.add_argument("--instructions",
+                    help="shifter instructions YAML whose plot names match the data's histograms, "
+                         "e.g. instructions/crv_real_draft.yaml for crvreco-006-001")
     ap.add_argument("--out", required=True, help="output directory (a rerun into the same "
                     "directory reuses the saved model responses, so an interrupted run resumes)")
     ap.add_argument("--runs", nargs="*", help="only these runs (default: all but the references)")
@@ -89,6 +91,8 @@ def main(argv=None) -> None:
     ap.add_argument("--ks-tight", type=float, default=0.05)
     ap.add_argument("--ks-loose", type=float, default=0.01)
     args = ap.parse_args(argv)
+    if not args.instructions and not args.list_models:
+        ap.error("--instructions is required (e.g. instructions/crv_real_draft.yaml)")
 
     reviewer = None
     if args.base_url:

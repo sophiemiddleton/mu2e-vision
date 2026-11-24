@@ -1,12 +1,21 @@
 # DRAFT shifter instructions for real CRV DQM histograms (crvreco-006-001, runs 124182-125850),
 # in the format of the CMS DQM-vision benchmark (version 2).
 #
-# NOT written or reviewed by the CRV group. Written on 2026-11-15 by histcompare from:
+# NOT written or reviewed by the CRV group. Written by hand (no script or model generates
+# this file) from:
 #   - the histogram definitions in Offline/CRVDQM/src (Offline v13_46_00 on cvmfs)
-#   - what the summed histograms look like in reference run 124336 and 20 other runs
+#   - the bin contents of the summed histograms of the 21 runs in real/006-001
 # Every number below is an observation of those runs, not a detector specification. The
 # tolerances are guesses meant to be replaced by a CRV expert's.
-version: '0.1-draft'
+#
+# v0.2 (2026-11-24): rewritten for reference run 125026. The numbers were re-measured on
+# 125026 and the other 20 runs. Changes from v0.1: the PEr shape (the highest bin is 4-8 PE,
+# then a flat plateau, not a maximum near 25 PE); the two half-populated channel ranges are
+# named, and any other half-populated range is a fault; the logchi2 tail cut went from 1% to
+# 2%; errorBits is nearly empty in the reference.
+# v0.1 (2026-11-15) described reference 124336, which has extra dead half-blocks and is
+# retired. Every vision pass before 2026-11-24 used v0.1: `git show 4fd943f:instructions/crv_real_draft.yaml`.
+version: '0.2-draft'
 subsystem: CRV
 plots:
   PEr:
@@ -16,15 +25,22 @@ plots:
     instruction: |
       Description: The number of photoelectrons (PEs) from the pulse fit of every
       reconstructed CRV pulse, all channels together, in 4 PE bins from 0 to 400 PE.
-      Quality criteria for cosmics: two features. (1) A sharp, tall peak at low PE, near
-      10 PE, from small pulses. (2) A broad shoulder from cosmic-ray muons crossing the
-      bars, with its maximum near 25 PE in the reference, falling off smoothly to about
-      150 PE. The shoulder must be at the same position as in the reference within about
-      one bin (4 PE). A shoulder moved to lower PE means lost SiPM gain or light yield; a
-      shoulder moved to higher PE means the gain or calibration changed. Both must be
-      reported. A missing shoulder must be reported.
-      Known issues: The height of the low-PE peak relative to the shoulder varies between
-      runs by up to a factor of two and is not by itself a problem. The number of entries
+      Quality criteria for cosmics: two features. (1) A sharp, tall peak in the first bins,
+      from small pulses; in the reference the 4-8 PE bin is the highest and the 8-12 PE bin
+      is about 90% of it. It falls to about 15% of the peak height by about 28 PE. (2) The
+      cosmic-ray muon shoulder: in the reference a flat plateau from about 28 to about 48 PE
+      at about 14% of the peak height, then a smooth fall to about 3% of the peak height at
+      100 PE. The plateau must cover the same PE range as in the reference within about two
+      bins (8 PE), and half of the pulses above 15 PE must lie below about 46 PE, as in the
+      reference, within about 4 PE. A shoulder moved to lower PE means lost SiPM gain or
+      light yield; a shoulder moved to higher PE means the gain or calibration changed. Both
+      must be reported. A missing shoulder must be reported.
+      Known issues: Which of the 4-8 PE and 8-12 PE bins is the highest changes with the
+      detector configuration and is not a criterion. The plateau's height relative to the
+      low-PE peak varies between runs by up to a factor of two (from about 14% to about 23%)
+      and is not by itself a problem. In runs before about 125000 the shoulder falls slowly
+      with no flat part, and half of the pulses above 15 PE lie below about 42 PE; it is not
+      yet decided whether those runs need a reference of their own. The number of entries
       depends on run length and is not a quality criterion.
       Action for the CRV shifter: if the quality criteria are not met, mark the run BAD,
       make an elog entry with the plot, and contact the CRV expert on call.
@@ -36,14 +52,18 @@ plots:
       Description: The number of digis in each offline channel (scintillator bar index x 4
       + SiPM number), 2304 channels. A front-end board (FEB) reads 64 consecutive channels.
       Quality criteria for cosmics: in the reference, channels 0-1023 are all populated at
-      a similar rate with channel-to-channel fluctuations; channels 1024-2303 are populated
-      at roughly 0.3-0.5 of that rate, with some ranges where neighbouring channels
-      alternate between higher and lower rates. The same ranges must be populated in the
-      input, with the same rate of each range relative to channels 0-1023 within about a
-      factor of 1.5. Must be reported: a contiguous range of 64 or more channels that is
-      populated in the reference but empty or nearly empty in the input (an FEB or link
-      dropped out); a range of channels far above its rate in the reference (noise or
-      a threshold problem); a range far below its rate in the reference.
+      a similar rate, with channel-to-channel fluctuations. In two ranges only every second
+      channel is populated: the even channels of 1024-1535 and the odd channels of
+      2048-2303 are empty. This is so in every run of this configuration and is not a
+      fault. The other channels of 1024-2303 are populated at a lower rate; on average,
+      channels 1024-2303 hold about 0.3 of the rate of channels 0-1023. The same channels
+      must be populated in the input, and each FEB's share of all digis must be within
+      about a factor of 1.5 of its share in the reference. Must be reported: a range of 64
+      or more consecutive channels that is populated in the reference but empty or nearly
+      empty in the input (an FEB or link dropped out); a range where the even channels, or
+      the odd channels, are empty in the input but populated in the reference (a dead
+      half of an FEB, even when it looks like the two known ranges); a range of channels
+      far above or far below its rate in the reference (noise or a threshold problem).
       Known issues: a few isolated empty channels, or single channels up to about twice
       their neighbours, are tolerated. The number of entries depends on run length.
       Action for the CRV shifter: if the quality criteria are not met, mark the run BAD,
@@ -54,16 +74,17 @@ plots:
     xlabel: Max sample ADC
     instruction: |
       Description: The largest ADC sample of each digi's waveform, 0-4096 ADC counts.
-      Quality criteria for cosmics: nothing below about 2050 ADC (the baseline); a sharp
-      peak just above the baseline near 2140 ADC; a smooth shoulder and tail from about
-      2200 to 3500 ADC; a small spike in the last bin (4095, saturated waveforms) that
-      holds about 0.5% of the entries in the reference. The position of the sharp peak
-      must agree with the reference within about 20 ADC. Must be reported: a shifted
-      baseline or peak, entries well below the baseline, a saturation spike several times
-      larger relative to the rest of the histogram than in the reference, or a shoulder
-      of clearly different shape.
-      Known issues: The relative height of the shoulder varies a little between runs. The
-      number of entries depends on run length.
+      Quality criteria for cosmics: almost nothing below about 2050 ADC (the baseline;
+      about 0.01% of the entries); a sharp peak just above the baseline, near 2140 ADC; a
+      smooth shoulder and tail from about 2200 to 3500 ADC; a small spike in the last bin
+      (4095, saturated waveforms) that holds about 0.7% of the entries in the reference.
+      The position of the sharp peak must agree with the reference within about 20 ADC.
+      Must be reported: a shifted baseline or peak, entries well below the baseline, a
+      saturation spike more than about three times the reference's share of the entries,
+      or a shoulder of clearly different shape.
+      Known issues: The saturated share varies between runs from about 0.3% to about 0.7%,
+      and the relative height of the shoulder varies a little. The number of entries
+      depends on run length.
       Action for the CRV shifter: if the quality criteria are not met, mark the run BAD,
       make an elog entry with the plot, and contact the CRV expert on call.
   logchi2:
@@ -73,13 +94,17 @@ plots:
     instruction: |
       Description: log10 of the chi2 of each reconstructed pulse's fit (pulses whose fit
       did not run are not included), from -3 to 5.
-      Quality criteria for cosmics: a single peak near 1.7 with a long low side tail toward
+      Quality criteria for cosmics: a single peak near 1.6 with a long low side tail toward
       -3 and a steeper fall above 2.5. The peak position must agree with the reference
-      within about 0.2. Must be reported: a shifted or broadened peak, or a second peak
-      or a visible bump at high log10(chi2) (above 3.5) holding more than about 1% of the
-      pulses, which means badly fitted (distorted, piled-up or noisy) pulses.
-      Known issues: The reference has about 0.3% of its pulses above 3.5, which is not
-      visible on a linear scale. The number of entries depends on run length.
+      within about 0.2. Must be reported: a shifted or broadened peak, or a second peak or
+      a visible bump at high log10(chi2), or more than about 2% of the pulses above 3.5
+      (about three times the reference), which means badly fitted (distorted, piled-up or
+      noisy) pulses.
+      Known issues: The reference has about 0.6% of its pulses above 3.5, which is not
+      visible on a linear scale. Runs before about 125000 have about 0.4%, and runs from
+      about 125150 onwards about 1.5-1.7%; that level alone is not a reason to mark a run
+      BAD. Why the tail grew is not yet understood. The number of entries depends on run
+      length.
       Action for the CRV shifter: if the quality criteria are not met, mark the run BAD,
       make an elog entry with the plot, and contact the CRV expert on call.
   errorBits:
@@ -91,15 +116,15 @@ plots:
       firmware error bit that is set adds one count to its bin. The bin from 0 to 1 is bit
       0, from 1 to 2 is bit 1, and so on: 0 FEBuBMismatch, 1 FEBBufferIssue, 2 FEBOverflow,
       3 Group1Issue, 4 Group2Issue, 5 Group3Issue, 6 uBMatchError, 7 Truncation.
-      Quality criteria for cosmics: in the reference only bit 0 (FEBuBMismatch) is visible,
-      set on about half of the ROC headers; bits 1-7 have a few hundred counts at most,
-      invisible on a linear scale. Must be reported: any of bits 1-7 visible on a linear
-      scale, that is with a count comparable to bit 0's or to a sizeable fraction of the
-      number of events.
-      Known issues: The rate of bit 0 varies between runs from almost never to almost
-      every header; its meaning is not yet established and bit 0 alone is not a reason to
-      mark a run BAD. A nearly empty histogram is GOOD (no errors). The number of
-      entries depends on run length.
+      Quality criteria for cosmics: in the reference the histogram is nearly empty: no bit
+      is set on more than a few ROC headers in a million. Must be reported: any of bits 1-7
+      set on about 1% or more of the ROC headers, that is with a count that is a visible
+      fraction of the number of events.
+      Known issues: Bit 0 (FEBuBMismatch) is set on anything from almost no headers to
+      almost every header, depending on the run; its meaning is not yet established and
+      bit 0 alone is not a reason to mark a run BAD, even when it is absent from the
+      reference. A nearly empty histogram is GOOD (no errors). The number of entries
+      depends on run length.
       Action for the CRV shifter: if the quality criteria are not met, mark the run BAD,
       make an elog entry with the plot, and contact the CRV expert on call.
   activeFebCount:
@@ -110,10 +135,10 @@ plots:
       Description: The number of FEBs flagged active in each ROC header. In this
       configuration every event has two ROC headers, one that reports 6 active FEBs and
       one that reports 24.
-      Quality criteria for cosmics: exactly two bars, at 6 and at 24, of equal height.
-      Must be reported: entries at any other number of FEBs (FEBs dropping out or
-      appearing), or the two bars differing in height by more than a few percent (one ROC
-      missing from some events, or extra headers).
+      Quality criteria for cosmics: exactly two bars, at 6 and at 24, of equal height, as
+      in the reference. Must be reported: entries at any other number of FEBs (FEBs
+      dropping out or appearing), or the two bars differing in height by more than a few
+      percent (one ROC missing from some events, or extra headers).
       Known issues: The number of entries depends on run length.
       Action for the CRV shifter: if the quality criteria are not met, mark the run BAD,
       make an elog entry with the plot, and contact the CRV expert on call.
